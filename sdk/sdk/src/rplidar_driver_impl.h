@@ -80,6 +80,8 @@ public:
     virtual u_result ascendScanData(rplidar_response_measurement_node_hq_t * nodebuffer, size_t count);
     virtual u_result getScanDataWithInterval(rplidar_response_measurement_node_t * nodebuffer, size_t & count);
     virtual u_result getScanDataWithIntervalHq(rplidar_response_measurement_node_hq_t * nodebuffer, size_t & count);
+    virtual u_result setRelateIp(const rplidar_payload_ip_set_related_t& output,_u32 timeout = DEFAULT_TIMEOUT);
+    virtual u_result cancelRelateIp(_u32 type,_u32 timeout = DEFAULT_TIMEOUT);
 
 protected:
 

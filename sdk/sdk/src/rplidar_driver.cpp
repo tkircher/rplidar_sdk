@@ -44,7 +44,7 @@
 #include "rplidar_driver_impl.h"
 #include "rplidar_driver_serial.h"
 #include "rplidar_driver_TCP.h"
-
+#include "rplidar_driver_UDP.h"
 #include <algorithm>
 
 #ifndef min
@@ -89,6 +89,8 @@ RPlidarDriver * RPlidarDriver::CreateDriver(_u32 drivertype)
         return new RPlidarDriverSerial();
     case DRIVER_TYPE_TCP:
          return new RPlidarDriverTCP();
+    case DRIVER_TYPE_UDP:
+        return new RPlidarDriverUDP();
     default:
         return NULL;
     }
@@ -236,7 +238,7 @@ u_result RPlidarDriverImplCommon::getDeviceInfo(rplidar_response_device_info_t &
     if (!isConnected()) return RESULT_OPERATION_FAIL;
 
     _disableDataGrabbing();
-
+    //delay(100);
     {
         rp::hal::AutoLocker l(_lock);
 
@@ -1293,7 +1295,7 @@ u_result RPlidarDriverImplCommon::getLidarConf(_u32 type, std::vector<_u8> &outp
         if (IS_FAIL(ans = _sendCommand(RPLIDAR_CMD_GET_LIDAR_CONF, &query, sizeof(query)))) {
             return ans;
         }
-
+        delay(100);
         // waiting for confirmation
         rplidar_ans_header_t response_header;
         if (IS_FAIL(ans = _waitResponseHeader(&response_header, timeout))) {
@@ -1895,6 +1897,33 @@ u_result RPlidarDriverImplCommon::getScanDataWithIntervalHq(rplidar_response_mea
     return RESULT_OK;
 }
 
+u_result RPlidarDriverImplCommon::setRelateIp(const rplidar_payload_ip_set_related_t& output, _u32 timeout)
+{
+    u_result ans;
+    std::vector<_u8> payload(sizeof(output));
+    memcpy(&payload[0], &output, sizeof(output));
+    {
+        rp::hal::AutoLocker l(_lock);
+        //if (IS_FAIL(ans = _sendCommand(RPLIDAR_CMD_SET_LIDAR_CONF, &payload[0], payload.size()))) {
+        if (IS_FAIL(ans = _sendCommand(RPLIDAR_CMD_SET_LIDAR_CONF, &output, sizeof(output)))) {
+            return ans;
+        }
+    }
+    return RESULT_OK;
+}
+
+u_result RPlidarDriverImplCommon::cancelRelateIp(_u32 type, _u32 timeout)
+{
+    u_result ans;
+
+    rp::hal::AutoLocker l(_lock);
+    if (IS_FAIL(ans = _sendCommand(RPLIDAR_CMD_SET_LIDAR_CONF, &type, sizeof(type)))) {
+        return ans;
+    }
+
+    return RESULT_OK;
+}
+
 static inline float getAngle(const rplidar_response_measurement_node_t& node)
 {
     return (node.angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT) / 64.f;
@@ -2288,6 +2317,45 @@ u_result RPlidarDriverTCP::connect(const char * ipStr, _u32 port, _u32 flag)
 
         // establish the serial connection...
         if(!_chanDev->bind(ipStr, port))
+            return RESULT_INVALID_DATA;
+    }
+
+    _isConnected = true;
+
+    checkMotorCtrlSupport(_isSupportingMotorCtrl);
+    stopMotor();
+
+    return RESULT_OK;
+}
+RPlidarDriverUDP::RPlidarDriverUDP()
+{
+    _chanDev = new UDPChannelDevice();
+}
+
+RPlidarDriverUDP::~RPlidarDriverUDP()
+{
+    // force disconnection
+    disconnect();
+}
+
+void RPlidarDriverUDP::disconnect()
+{
+    if (!_isConnected) return;
+    stop();
+    _chanDev->close();
+}
+
+u_result RPlidarDriverUDP::connect(const char * ipStr, _u32 port, _u32 flag)
+{
+    if (isConnected()) return RESULT_ALREADY_DONE;
+
+    if (!_chanDev) return RESULT_INSUFFICIENT_MEMORY;
+
+    {
+        rp::hal::AutoLocker l(_lock);
+
+        // establish the serial connection...
+        if (!_chanDev->bind(ipStr, port))
             return RESULT_INVALID_DATA;
     }
 

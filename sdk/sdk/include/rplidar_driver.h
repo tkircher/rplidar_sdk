@@ -63,6 +63,7 @@ struct RplidarScanMode {
 enum {
     DRIVER_TYPE_SERIALPORT = 0x0,
     DRIVER_TYPE_TCP = 0x1,
+    DRIVER_TYPE_UDP = 0x2,
 };
 
 class ChannelDevice
@@ -326,6 +327,8 @@ public:
     /// The interface will return RESULT_REMAINING_DATA to indicate that the given buffer is full, but that there remains data to be read.
     virtual u_result getScanDataWithIntervalHq(rplidar_response_measurement_node_hq_t * nodebuffer, size_t & count) = 0;
 
+    virtual u_result setRelateIp(const rplidar_payload_ip_set_related_t& output, _u32 timeout = DEFAULT_TIMEOUT) = 0;
+    virtual u_result cancelRelateIp(_u32 type, _u32 timeout = DEFAULT_TIMEOUT) = 0;
     virtual ~RPlidarDriver() {}
 protected:
     RPlidarDriver(){}

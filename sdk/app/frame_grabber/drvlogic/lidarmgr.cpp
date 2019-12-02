@@ -116,17 +116,16 @@ bool LidarMgr::onConnectTcp(const char * ipStr, _u32 port, _u32 flag)
 {
     if (_isConnected) return true;
 
-    if(!lidar_drv)
-        lidar_drv = RPlidarDriver::CreateDriver(DRIVER_TYPE_TCP);
+    if (!lidar_drv)
+        lidar_drv = RPlidarDriver::CreateDriver(DRIVER_TYPE_UDP);
 
     if (IS_FAIL(lidar_drv->connect(ipStr, port))) return false;
-     // retrieve the devinfo
+    // retrieve the devinfo
     u_result ans = lidar_drv->getDeviceInfo(devinfo);
 
     if (IS_FAIL(ans)) {
         return false;
     }
-
     _isConnected = true;
     return true;
 }
